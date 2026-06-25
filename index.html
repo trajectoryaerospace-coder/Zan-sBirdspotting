@@ -103,7 +103,7 @@
         /* --- SEARCH AND FILTER CONTROLS --- */
         .controls-row {
             display: flex;
-            flex-direction: column; /* Stacked layout for phone screens */
+            flex-direction: column;
             gap: 10px;
             width: 100%;
             max-width: 480px;
@@ -116,7 +116,7 @@
             padding: 12px 16px;
             border-radius: 14px;
             border: 1px solid rgba(0,0,0,0.08);
-            font-size: 16px; /* 16px prevents automatic zoom layout distortion on iOS */
+            font-size: 16px;
             box-shadow: var(--shadow);
             outline: none;
             transition: all 0.2s;
@@ -517,7 +517,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script>
-        const birdsData = [
+        // Core dataset
+        let birdsData = [
             {
                 id: 5,
                 numberStr: "#01",
@@ -581,7 +582,7 @@
                 rarity: "Abundant",
                 rarityColor: "var(--rarity-abundant)",
                 gradient: "linear-gradient(135deg, #ebedef, #2c3e50, #f1948a)", 
-                images: ["Red-billed2.jpg", "Red-billed1.jpg"],
+                images: ["Red-billed2.jpg", "Red-billed.jpg"],
                 description: "A big, dark, and noisy bird with a bright red bill. They build massive, messy communal nests out of thorny twigs that look like huge stick fortresses.",
                 checked: false
             },
@@ -632,6 +633,24 @@
         ];
 
         const grid = document.getElementById('bird-grid');
+
+        // --- LOCAL STORAGE FUNCTIONS ---
+        function loadSavedProgress() {
+            const savedData = localStorage.getItem('zans_bird_progress');
+            if (savedData) {
+                const checkedIds = JSON.parse(savedData);
+                birdsData.forEach(bird => {
+                    if (checkedIds.includes(bird.id)) {
+                        bird.checked = true;
+                    }
+                });
+            }
+        }
+
+        function saveProgress() {
+            const checkedIds = birdsData.filter(b => b.checked).map(b => b.id);
+            localStorage.setItem('zans_bird_progress', JSON.stringify(checkedIds));
+        }
 
         function updateStatsDashboard() {
             const total = birdsData.length;
@@ -724,6 +743,9 @@
             const bird = birdsData.find(b => b.id === id);
             bird.checked = event.target.checked;
             
+            // Save immediately to local storage
+            saveProgress();
+
             if (bird.checked) {
                 confetti({
                     particleCount: 120,
@@ -752,6 +774,8 @@
             document.getElementById('info-modal').classList.remove('active');
         }
 
+        // Initialize App
+        loadSavedProgress();
         filterAndRender();
     </script>
 </body>
