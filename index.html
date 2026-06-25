@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zanieke's Bird Spotting </title>
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #94afe0 0%, #3f5b83 100%);
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text-main: #2c3e50;
+            --text-sub: #5a6a85;
+            --accent: #3498db;
+            --success: #2ecc71;
+            --shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+            
+            /* Rarity Colors */
+            --rarity-abundant: #2ecc71;
+            --rarity-common: #3498db;
+            --rarity-fairly-common: #9b59b6;
+            --rarity-uncommon: #e67e22;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            margin-top: 20px;
+        }
+
+        h1 {
+            font-size: 2.6rem;
+            color: #1a2a3a;
+            margin-bottom: 8px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        p.subtitle {
+            font-size: 1.1rem;
+            color: var(--text-sub);
+            margin: 0;
+        }
+
+        /* --- STATS DASHBOARD --- */
+        .stats-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            padding: 20px 25px;
+            width: 100%;
+            max-width: 600px;
+            box-sizing: border-box;
+            box-shadow: var(--shadow);
+            margin-bottom: 25px;
+            border: 1px solid rgba(255,255,255,0.6);
+        }
+
+        .stats-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .progress-track {
+            background: #e2e8f0;
+            height: 12px;
+            border-radius: 10px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background: linear-gradient(90deg, #2ecc71, #27ae60);
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 10px;
+        }
+
+        /* --- SEARCH AND FILTER CONTROLS --- */
+        .controls-row {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 35px;
+            box-sizing: border-box;
+        }
+
+        .search-bar {
+            flex: 1;
+            padding: 12px 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(0,0,0,0.08);
+            font-size: 1rem;
+            box-shadow: var(--shadow);
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .search-bar:focus {
+            border-color: var(--accent);
+            background: #fff;
+        }
+
+        .filter-select {
+            padding: 12px 15px;
+            border-radius: 16px;
+            border: 1px solid rgba(0,0,0,0.08);
+            background: white;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            outline: none;
+        }
+
+        /* --- VERTICAL SINGLE COLUMN TRACK --- */
+        .grid-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 45px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .bird-card {
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1), box-shadow 0.4s ease, opacity 0.4s ease;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            padding: 5px; /* Creates a clean dynamic border effect matching bird colors */
+            box-sizing: border-box;
+        }
+
+        .bird-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        /* --- IMAGE SLIDER CONTEXT & BOUNDARIES --- */
+        .image-slider-container {
+            width: 100%;
+            position: relative;
+            background-color: transparent;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border-radius: 24px 24px 0 0;
+        }
+
+        .image-wrapper {
+            display: flex;
+            width: 100%;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .image-wrapper::-webkit-scrollbar {
+            display: none;
+        }
+
+        .slider-img {
+            flex: 0 0 100%;
+            width: 100%;
+            height: auto;
+            max-height: 65vh; 
+            object-fit: contain; 
+            scroll-snap-align: start;
+        }
+
+        /* UI Metadata Elements */
+        .bird-meta-badge {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 800;
+            font-size: 0.9rem;
+            z-index: 3;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            color: var(--text-main);
+        }
+
+        .rarity-tag {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: white;
+            z-index: 3;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .slider-dots {
+            position: absolute;
+            bottom: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 6px;
+            z-index: 3;
+            pointer-events: none;
+            background: rgba(255, 255, 255, 0.6);
+            padding: 5px 10px;
+            border-radius: 20px;
+        }
+
+        .dot {
+            width: 7px;
+            height: 7px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .dot.active {
+            background: var(--text-main);
+            width: 14px;
+            border-radius: 4px;
+        }
+
+        .card-content {
+            padding: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.82);
+            backdrop-filter: blur(10px);
+            z-index: 4;
+            border-top: 1px solid rgba(0, 0, 0, 0.04);
+            border-radius: 0 0 24px 24px;
+        }
+
+        .bird-name {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin: 0;
+            color: #1e293b;
+        }
+
+        /* Checkbox Styling */
+        .checkbox-container {
+            display: block;
+            position: relative;
+            padding-left: 35px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .checkbox-container input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            height: 0;
+            width: 0;
+        }
+
+        .checkmark {
+            position: absolute;
+            top: -16px;
+            right: 0;
+            height: 34px;
+            width: 34px;
+            background-color: #f1f5f9;
+            border-radius: 50%;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 2px solid #cbd5e1;
+        }
+
+        .checkbox-container:hover input ~ .checkmark {
+            background-color: #e2e8f0;
+            border-color: #94a3b8;
+        }
+
+        .checkbox-container input:checked ~ .checkmark {
+            background-color: var(--success);
+            border-color: var(--success);
+            transform: scale(1.1) rotate(360deg);
+        }
+
+        .checkmark:after {
+            content: "";
+            position: absolute;
+            display: none;
+        }
+
+        .checkbox-container input:checked ~ .checkmark:after {
+            display: block;
+        }
+
+        .checkbox-container .checkmark:after {
+            left: 12px;
+            top: 7px;
+            width: 6px;
+            height: 12px;
+            border: solid white;
+            border-width: 0 3px 3px 0;
+            transform: rotate(45deg);
+        }
+
+        /* Found Overlay Style */
+        .found-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(46, 204, 113, 0.12);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .found-badge {
+            background: var(--success);
+            color: white;
+            padding: 12px 28px;
+            border-radius: 30px;
+            font-weight: 800;
+            font-size: 1.4rem;
+            box-shadow: 0 8px 20px rgba(46, 204, 113, 0.3);
+            transform: scale(0);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .bird-card.checked .found-overlay {
+            display: flex;
+        }
+
+        .bird-card.checked .found-badge {
+            transform: scale(1);
+        }
+
+        .bird-card.checked {
+            opacity: 0.75;
+        }
+
+        /* Popup Modal Styling */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 32px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+            transform: translateY(30px);
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+        }
+
+        .modal.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-img {
+            width: 100%;
+            height: auto;
+            max-height: 350px;
+            object-fit: cover;
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .modal-title {
+            margin: 0 0 12px 0;
+            font-size: 2rem;
+            color: #1e293b;
+        }
+
+        .modal-desc {
+            color: #475569;
+            line-height: 1.7;
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.9);
+            border: none;
+            border-radius: 50%;
+            width: 42px;
+            height: 42px;
+            font-size: 1.4rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.2s;
+            z-index: 102;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .close-btn:hover {
+            background: white;
+            transform: scale(1.1);
+        }
+
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="confetti-canvas"></canvas>
+
+    <header>
+        <h1>AMAZINGG ZAN'S CHECKLISTTT 🐦</h1>
+        <p class="subtitle">Swipe sideways on pictures to view gallery. Toggle checks when found anddd click on the cards for info</p>
+    </header>
+
+    <section class="stats-panel">
+        <div class="stats-header">
+            <span>Progress</span>
+            <span id="stats-counter">0 / 10 Spotted</span>
+        </div>
+        <div class="progress-track">
+            <div class="progress-bar" id="stats-progress-bar"></div>
+        </div>
+    </section>
+
+    <section class="controls-row">
+        <input type="text" class="search-bar" id="search-input" placeholder="Search bird names..." oninput="filterAndRender()">
+        <select class="filter-select" id="filter-select" onchange="filterAndRender()">
+            <option value="all">All Birds</option>
+            <option value="spotted">Spotted Only</option>
+            <option value="remaining">Remaining</option>
+        </select>
+    </section>
+
+    <main class="grid-container" id="bird-grid"></main>
+
+    <div class="modal" id="info-modal" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+            <img src="" alt="" class="modal-img" id="modal-image">
+            <div class="modal-body">
+                <h2 class="modal-title" id="modal-title">Bird Name</h2>
+                <p class="modal-desc" id="modal-desc">Interesting facts...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script>
+        // --- DATA OBJECT WITH PRESERVED IMAGES, SYSTEM RARITIES & SPECIFIC MATCHING GRADIENTS ---
+        const birdsData = [
+            {
+                id: 5,
+                numberStr: "#01",
+                name: "Pearl-spotted Owlet",
+                rarity: "Common",
+                rarityColor: "var(--rarity-common)",
+                gradient: "linear-gradient(135deg, #efeae4, #dcd0c4, #8e745a)", // Pearl, Cream, and Owl Brown 
+                isPinned: true, 
+                images: ["owl1.jpg", "owl2.jpg"],
+                description: "A tiny, adorable, but ferocious hunter! This little owlet has 'false eyes' on the back of its head to confuse predators and can often be found active during the daytime.",
+                checked: false
+            },
+            {
+                id: 1,
+                numberStr: "#02",
+                name: "Brown-headed Parrot",
+                rarity: "Fairly Common",
+                rarityColor: "var(--rarity-fairly-common)",
+                gradient: "linear-gradient(135deg, #eafaf1, #a3e4d7, #bc8f8f)", // Vibrant Parrot Green, Soft Mint, Soft Wood Brown
+                images: ["Brown1.jpg", "Brown2.jpg"],
+                description: "A lovely, mostly green parrot with a distinct soft brown head. They love woodland areas and are known to travel in small, lively, and highly energetic flocks.",
+                checked: false
+            },
+            {
+                id: 2,
+                numberStr: "#03",
+                name: "Magpie Shrike",
+                rarity: "Abundant",
+                rarityColor: "var(--rarity-abundant)",
+                gradient: "linear-gradient(135deg, #ffffff, #cbd5e1, #1e293b)", // Stark Feathery White, Slate Grey, Bold Black
+                images: ["magpie1.jpg", "magpie2.jpg"],
+                description: "With an incredibly long tail and stark black-and-white feathers, this bird stands out anywhere. They love to sit high up on branches to scan for insects.",
+                checked: false
+            },
+            {
+                id: 3,
+                numberStr: "#04",
+                name: "Purple Roller",
+                rarity: "Common",
+                rarityColor: "var(--rarity-common)",
+                gradient: "linear-gradient(135deg, #f5eef8, #d7bde2, #d5f5e3)", // Velvet Purple, Soft Lilac, Olive Branch Green
+                images: ["purple1.jpg", "purple2.jpg"],
+                description: "The largest of the rollers, sporting rich shades of purple, olive, and lilac. They get their name from their spectacular 'rolling' aerobatic display flights!",
+                checked: false
+            },
+            {
+                id: 4,
+                numberStr: "#05",
+                name: "Bennett's Woodpecker",
+                rarity: "Uncommon",
+                rarityColor: "var(--rarity-uncommon)",
+                gradient: "linear-gradient(135deg, #fef9e7, #f9e79f, #af601a)", // Spotted Sand Yellow, Soft Golden, Bark Crimson-Brown
+                images: ["bernwood1.jpg", "bernwood2.jpg"],
+                description: "Unlike many woodpeckers who stay entirely on trees, Bennett's Woodpecker frequently spends time on the ground searching for their absolute favorite food: ants!",
+                checked: false
+            },
+            {
+                id: 6,
+                numberStr: "#06",
+                name: "Red-billed Buffalo Weaver",
+                rarity: "Abundant",
+                rarityColor: "var(--rarity-abundant)",
+                gradient: "linear-gradient(135deg, #ebedef, #2c3e50, #f1948a)", // Charcoal Plumage, Nest Twig Grey, Pop of Bill Red
+                images: ["Red-billed.jpg", "Red-billed2.jpg"],
+                description: "A big, dark, and noisy bird with a bright red bill. They build massive, messy communal nests out of thorny twigs that look like huge stick fortresses.",
+                checked: false
+            },
+            {
+                id: 7,
+                numberStr: "#07",
+                name: "Red-headed Weaver",
+                rarity: "Fairly Common",
+                rarityColor: "var(--rarity-fairly-common)",
+                gradient: "linear-gradient(135deg, #fdebd0, #f1948a, #e74c3c)", // Bright Weaver Yellow, Fiery Crimson Red Head, Grass Tones
+                images: ["Red-Head.jpg", "Red-Head2.jpg"],
+                description: "The male features a stunning, bright red head during breeding season. They are true architects, expertly weaving intricate, upside-down nests out of twigs and grass.",
+                checked: false
+            },
+            {
+                id: 8,
+                numberStr: "#08",
+                name: "Southern Red-billed Hornbill",
+                rarity: "Abundant",
+                rarityColor: "var(--rarity-abundant)",
+                gradient: "linear-gradient(135deg, #f2f4f4, #bdc3c7, #ec7063)", // White Wing Spots, Light Slate Grey, Curved Bill Orange-Red
+                images: ["Hornbill1.jpg", "Hornbill2.jpg"],
+                description: "Famous for its massive, curved red bill. These intelligent birds form incredible nesting pairs where the female seals herself inside a tree hollow for safety.",
+                checked: false
+            },
+            {
+                id: 9,
+                numberStr: "#09",
+                name: "African Grey Hornbill",
+                rarity: "Common",
+                rarityColor: "var(--rarity-common)",
+                gradient: "linear-gradient(135deg, #eaecee, #abb2b9, #f9e79f)", // Soft African Bush Grey, Silver Stripe White, Pale Cream Beak
+                images: ["grey1.jpg", "grey2.jpg"],
+                description: "A beautiful hornbill with a pale, curved beak and striking white stripes. Their unique whistling calls are a classic, magical sound of the African bush.",
+                checked: false
+            },
+            {
+                id: 10,
+                numberStr: "#10",
+                name: "Burchell's Starling",
+                rarity: "Common",
+                rarityColor: "var(--rarity-common)",
+                gradient: "linear-gradient(135deg, #ebdef0, #a9cce3, #a2d9ce)", // Iridescent Shimmer Purple, Metallic Deep Blue, Gloss Green
+                images: ["starling1.jpg", "starling2.jpg"],
+                description: "A large starling with brilliant metallic plumage that shimmers with deep purples, blues, and greens when it catches the light. Absolutely stunning to look at!",
+                checked: false
+            }
+        ];
+
+        const grid = document.getElementById('bird-grid');
+
+        // Dynamic Calculation Routine for the Global Dashboard
+        function updateStatsDashboard() {
+            const total = birdsData.length;
+            const spotted = birdsData.filter(b => b.checked).length;
+            const percentage = (spotted / total) * 100;
+            
+            document.getElementById('stats-counter').innerText = `${spotted} / ${total} Spotted`;
+            document.getElementById('stats-progress-bar').style.width = `${percentage}%`;
+        }
+
+        // Filtering and Card Sorting Routine
+        function filterAndRender() {
+            const searchQuery = document.getElementById('search-input').value.toLowerCase();
+            const filterValue = document.getElementById('filter-select').value;
+            
+            grid.innerHTML = '';
+
+            // 1. Sort Rule: Owlet pinned first. Else, unchecked before checked.
+            const sorted = [...birdsData].sort((a, b) => {
+                if (a.isPinned) return -1;
+                if (b.isPinned) return 1;
+                return a.checked - b.checked;
+            });
+
+            // 2. Query and Selection Filtering Logic
+            sorted.forEach(bird => {
+                const matchesSearch = bird.name.toLowerCase().includes(searchQuery);
+                let matchesFilter = true;
+                
+                if (filterValue === 'spotted') matchesFilter = bird.checked;
+                if (filterValue === 'remaining') matchesFilter = !bird.checked;
+
+                if (matchesSearch && matchesFilter) {
+                    createBirdCard(bird);
+                }
+            });
+
+            updateStatsDashboard();
+        }
+
+        // Card Assembly Logic
+        function createBirdCard(bird) {
+            const card = document.createElement('div');
+            card.className = `bird-card ${bird.checked ? 'checked' : ''}`;
+            card.style.background = bird.gradient; // Dynamically binds the multi-color matching bird gradient
+            card.onclick = () => openModal(bird);
+
+            let imagesHTML = '';
+            let dotsHTML = '';
+            bird.images.forEach((imgUrl, index) => {
+                imagesHTML += `<img src="${imgUrl}" alt="${bird.name}" class="slider-img" onerror="this.src='https://placehold.co/600x400?text=Missing+Photo'">`;
+                dotsHTML += `<span class="dot ${index === 0 ? 'active' : ''}"></span>`;
+            });
+
+            card.innerHTML = `
+                <div class="image-slider-container">
+                    <div class="bird-meta-badge">${bird.numberStr}</div>
+                    <div class="rarity-tag" style="background: ${bird.rarityColor}">${bird.rarity}</div>
+                    <div class="image-wrapper" onscroll="updateDots(event)">
+                        ${imagesHTML}
+                    </div>
+                    <div class="slider-dots">
+                        ${dotsHTML}
+                    </div>
+                    <div class="found-overlay">
+                        <span class="found-badge">✓ Found!</span>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <p class="bird-name">${bird.name}</p>
+                    <label class="checkbox-container" onclick="event.stopPropagation()">
+                        <input type="checkbox" ${bird.checked ? 'checked' : ''} onchange="toggleCheck(event, ${bird.id})">
+                        <span class="checkmark"></span>
+                    </label>
+                </div>
+            `;
+            grid.appendChild(card);
+        }
+
+        // Swiping Dot Synchronization Tracker
+        function updateDots(event) {
+            const wrapper = event.target;
+            const scrollIndex = Math.round(wrapper.scrollLeft / wrapper.clientWidth);
+            const dots = wrapper.nextElementSibling.querySelectorAll('.dot');
+            dots.forEach((dot, idx) => {
+                if (idx === scrollIndex) {
+                    dot.classList.add('active');
+                } else {
+                    dot.classList.remove('active');
+                }
+            });
+        }
+
+        // Interaction state toggler
+        function toggleCheck(event, id) {
+            const bird = birdsData.find(b => b.id === id);
+            bird.checked = event.target.checked;
+            
+            if (bird.checked) {
+                confetti({
+                    particleCount: 180,
+                    spread: 85,
+                    origin: { y: 0.6 },
+                    colors: ['#4a90e2', '#2ecc71', '#ffce54', '#e84393', '#9b59b6']
+                });
+            }
+
+            // Quick delay to let the animation show before auto-sorting moves card positions
+            setTimeout(() => {
+                filterAndRender();
+            }, 350);
+        }
+
+        // Fact Detail Modal Display Toggles
+        function openModal(bird) {
+            document.getElementById('modal-image').src = bird.images[0];
+            document.getElementById('modal-image').onerror = function() {
+                this.src = 'https://placehold.co/600x400?text=No+Photo+Found';
+            };
+            document.getElementById('modal-title').innerText = bird.name;
+            document.getElementById('modal-desc').innerText = bird.description;
+            document.getElementById('info-modal').classList.add('active');
+        }
+
+        // Close logic
+        function closeModal() {
+            document.getElementById('info-modal').classList.remove('active');
+        }
+
+        // Initialize App View
+        filterAndRender();
+    </script>
+</body>
+</html>
